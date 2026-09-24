@@ -60,7 +60,7 @@ function baseDeDatos(): { config: ConfigBaseDeDatos; gestionada: boolean } {
       port: Number(process.env.DB_PORT ?? 5432),
       user: process.env.DB_USER ?? "postgres",
       password: process.env.DB_PASSWORD ?? "",
-      database: process.env.DB_NAME ?? "servistack",
+      database: process.env.DB_NAME ?? "servistock",
       ...(exigeSsl ? { ssl: { rejectUnauthorized: false } } : {})
     }
   };
@@ -80,6 +80,12 @@ export const env = {
   db,
   // true cuando la base la administra la plataforma (DATABASE_URL): no se intenta crear la base de datos
   dbGestionada,
+  // Primer Administrador: solo se usa cuando la tabla de usuarios está vacía (ver db/administrador-inicial.ts)
+  admin: {
+    nombre: process.env.ADMIN_NOMBRE || "Administrador",
+    email: process.env.ADMIN_EMAIL || undefined,
+    password: process.env.ADMIN_PASSWORD || undefined
+  },
   // Carpeta con la aplicación Angular compilada. Si existe, el backend también sirve el frontend (un solo servicio)
   frontendDir: process.env.FRONTEND_DIR || undefined,
   // Auth0 (Identity Provider federado). Sin AUTH0_DOMAIN y AUTH0_CLIENT_ID queda desactivado

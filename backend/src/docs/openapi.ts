@@ -30,7 +30,7 @@ const rutasDominio = construirRutasDominio();
 export const openapi = {
   openapi: "3.0.3",
   info: {
-    title: "ServiStack API",
+    title: "Servistock API",
     version: "1.0.0",
     description:
       "API REST de Servistock (inventario de Servingeniería). Autenticación con JWT y roles Administrador y Empleado. Las operaciones críticas de stock son transaccionales (ACID) y se publican por Socket.IO solo después del COMMIT."
@@ -51,8 +51,8 @@ export const openapi = {
                 type: "object",
                 required: ["email", "password"],
                 properties: {
-                  email: { type: "string", example: "pepe@correo.com" },
-                  password: { type: "string", example: "pepe123" },
+                  email: { type: "string", example: "usuario@empresa.com" },
+                  password: { type: "string", example: "********" },
                   recaptchaToken: {
                     type: "string",
                     description: "Requerido si reCAPTCHA está activo"

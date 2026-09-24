@@ -1,18 +1,20 @@
 /**
  * Pruebas de integración de la API contra PostgreSQL real.
- * Usan SIEMPRE la base "servistack_test", que se recrea desde cero en cada ejecución.
+ * Usan SIEMPRE la base "servistock_test", que se recrea desde cero en cada ejecución.
  *   DB_PORT=5433 DB_PASSWORD=... npm test
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { createServer, type Server } from "node:http";
 import { after, before, describe, it } from "node:test";
+import bcrypt from "bcryptjs";
 import ExcelJS from "exceljs";
 import { SignJWT, exportJWK, generateKeyPair } from "jose";
 import pg from "pg";
 import { io as conectarSocket } from "socket.io-client";
 
-process.env.DB_NAME = "servistack_test";
+process.env.DB_NAME = "servistock_test";
 process.env.AUTO_INIT_DB = "false";
 
 // Auth0 simulado: un servidor local publica las claves públicas (JWKS) y los tests firman los tokens
@@ -46,6 +48,10 @@ const { inicializarBaseDeDatos } = await import("../src/db/inicializar.js");
 const { crearApp } = await import("../src/app.js");
 const { iniciarTiempoReal, cerrarTiempoReal } = await import("../src/realtime/socket.js");
 const { pool } = await import("../src/config/db.js");
+const { crearAdministradorInicial } = await import("../src/db/administrador-inicial.js");
+
+// El sistema ya no trae cuentas escritas en el código: las pruebas crean su propio administrador
+const ADMIN_CLAVE = "admin-clave-123";
 
 let servidor: Server;
 let base = "";
@@ -98,11 +104,18 @@ before(async () => {
   await admin.query(`DROP DATABASE IF EXISTS "${env.db.database}" WITH (FORCE)`);
   await admin.end();
   await inicializarBaseDeDatos();
+  assert.equal(await crearAdministradorInicial(pool, { email: "admin@correo.com", password: ADMIN_CLAVE }), "creado");
 
   servidor = createServer(crearApp());
   iniciarTiempoReal(servidor);
   await new Promise<void>((resolver) => servidor.listen(0, resolver));
   base = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`;
+
+  // Empleado de prueba: lo crea el Administrador por la API, igual que en producción
+  const creado = await api("POST", "/empleados", await login("admin@correo.com", ADMIN_CLAVE), {
+    nombre: "Pepe", email: "pepe@correo.com", password: "pepe123", rolId: 2
+  });
+  assert.equal(creado.status, 201, JSON.stringify(creado.body));
 });
 
 after(async () => {
@@ -131,7 +144,7 @@ describe("Servistock API", () => {
   });
 
   it("RF-65/66: credenciales correctas emiten token; incorrectas dan mensaje genérico sin token", async () => {
-    admin = await login("admin@correo.com", "123456");
+    admin = await login("admin@correo.com", ADMIN_CLAVE);
     pepe = await login("pepe@correo.com", "pepe123");
 
     const mala = await api("POST", "/auth/login", undefined, { email: "admin@correo.com", password: "mala" });
@@ -157,6 +170,48 @@ describe("Servistock API", () => {
         assert.ok(String(hoja.getRow(1).getCell(1).value).length > 0);
       });
     }
+  });
+
+  describe("Administrador inicial (sin cuentas escritas en el código)", () => {
+    it("schema.sql no contiene cuentas de ejemplo ni hashes de contraseñas", () => {
+      const sql = readFileSync(new URL("../src/db/schema.sql", import.meta.url), "utf8");
+      assert.equal(/INSERT INTO usuarios/i.test(sql), false, "no debe sembrar usuarios");
+      assert.equal(/\$2[aby]\$\d\d\$/.test(sql), false, "no debe contener hashes bcrypt");
+    });
+
+    it("con usuarios ya existentes no crea otro administrador", async () => {
+      assert.equal(await crearAdministradorInicial(pool, { email: "otro@correo.com", password: "otra-clave-123" }), "existente");
+    });
+
+    it("con la tabla vacía: sin configuración, clave corta o correo inválido no crean nada; con datos válidos crea un Administrador", async () => {
+      const cliente = await pool.connect();
+
+      try {
+        await cliente.query("BEGIN");
+        await cliente.query("DELETE FROM usuarios"); // se revierte al final: no afecta las demás pruebas
+
+        assert.equal(await crearAdministradorInicial(cliente, {}), "sin-configuracion");
+        assert.equal(await crearAdministradorInicial(cliente, { email: "a@b.co", password: "corta" }), "datos-invalidos");
+        assert.equal(await crearAdministradorInicial(cliente, { email: "no-es-correo", password: "clave-larga-123" }), "datos-invalidos");
+        assert.equal((await cliente.query("SELECT COUNT(*)::int AS n FROM usuarios")).rows[0].n, 0);
+
+        assert.equal(
+          await crearAdministradorInicial(cliente, { email: "Jefe@Empresa.com", password: "clave-larga-123", nombre: "Jefe" }),
+          "creado"
+        );
+        const { rows } = await cliente.query(
+          "SELECT u.email, u.password_hash, r.nombre AS rol FROM usuarios u JOIN roles r ON r.id = u.rol_id"
+        );
+        assert.equal(rows.length, 1);
+        assert.equal(rows[0].email, "jefe@empresa.com");
+        assert.equal(rows[0].rol, "Administrador");
+        assert.notEqual(rows[0].password_hash, "clave-larga-123", "la clave se guarda cifrada");
+        assert.equal(await bcrypt.compare("clave-larga-123", rows[0].password_hash), true);
+      } finally {
+        await cliente.query("ROLLBACK");
+        cliente.release();
+      }
+    });
   });
 
   describe("Empleados (RF-01 a RF-05, RN-11, ADR-011/012)", () => {

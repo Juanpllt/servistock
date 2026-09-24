@@ -30,6 +30,10 @@ services:
     environment:
       DATABASE_URL: postgresql://servistock:${POSTGRES_PASSWORD}@db:5432/servistock
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en el archivo .env}
+      # Primer Administrador: se crea solo si la base está vacía
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL en el archivo .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en el archivo .env (8+ caracteres)}
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Administrador}
       TZ_NEGOCIO: ${TZ_NEGOCIO:-America/Bogota}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       # Auth0 (opcional): si están vacíos, el botón "Ingresar con Auth0" no aparece

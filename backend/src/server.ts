@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { crearApp } from "./app.js";
 import { pool } from "./config/db.js";
 import { env } from "./config/env.js";
+import { crearAdministradorInicial } from "./db/administrador-inicial.js";
 import { inicializarBaseDeDatos } from "./db/inicializar.js";
 import { conReintentos } from "./db/reintentos.js";
 import { logger } from "./observability/logger.js";
@@ -18,6 +19,21 @@ if (process.env.AUTO_INIT_DB !== "false") {
         host: env.db.host
       })
   });
+
+  // Primer Administrador (solo si no existe ningún usuario)
+  const resultado = await crearAdministradorInicial(pool, env.admin);
+
+  if (resultado === "creado") {
+    logger.info("administrador_inicial_creado", { email: env.admin.email });
+  } else if (resultado === "sin-configuracion") {
+    logger.warn("sin_administrador", {
+      mensaje: "No hay usuarios. Define ADMIN_EMAIL y ADMIN_PASSWORD (mínimo 8 caracteres) y reinicia."
+    });
+  } else if (resultado === "datos-invalidos") {
+    logger.warn("administrador_invalido", {
+      mensaje: "ADMIN_EMAIL no es un correo válido o ADMIN_PASSWORD tiene menos de 8 caracteres."
+    });
+  }
 }
 
 const servidor = createServer(crearApp());

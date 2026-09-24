@@ -16,18 +16,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
 INSERT INTO roles (nombre) VALUES ('Administrador'), ('Empleado')
 ON CONFLICT (nombre) DO NOTHING;
 
--- Usuarios iniciales (mismas credenciales que tenía el backend en memoria)
-INSERT INTO usuarios (nombre, email, password_hash, rol_id)
-SELECT 'Administrador', 'admin@correo.com',
-       '$2b$10$nZ7mwgrjGw5cwSbO5NZgcegP1SSeJK1mWskOCfHcRdxuBgBVWepSC',
-       (SELECT id FROM roles WHERE nombre = 'Administrador')
-ON CONFLICT (email) DO NOTHING;
-
-INSERT INTO usuarios (nombre, email, password_hash, rol_id)
-SELECT 'Pepe', 'pepe@correo.com',
-       '$2b$10$gZpAhuArcb47qCIMfafdn.1zLpk3aXHomZCG/KAth4Yc8HB6wzPcO',
-       (SELECT id FROM roles WHERE nombre = 'Empleado')
-ON CONFLICT (email) DO NOTHING;
+-- No se siembran cuentas: el primer Administrador se crea al arrancar con ADMIN_EMAIL y ADMIN_PASSWORD
+-- (ver db/administrador-inicial.ts). Nunca se guardan contraseñas ni hashes en el código.
 
 -- ============================================================================
 -- Modelo de dominio de Servistock (documento de requisitos, sección 3).

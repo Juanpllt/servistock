@@ -49,7 +49,7 @@ jobs:
         run: npm run typecheck
       - name: Lint (ESLint)
         run: npm run lint
-      # Las pruebas de integración recrean la base "servistack_test" en PostgreSQL real
+      # Las pruebas de integración recrean la base "servistock_test" en PostgreSQL real
       - name: Pruebas de integración
         run: npm test
 
