@@ -1,0 +1,77 @@
+<div class="pagina-cabecera">
+  <h1>Empleados</h1>
+  <button type="button" class="btn" (click)="abrirFormulario()">Nuevo empleado</button>
+</div>
+
+<div class="tarjeta-panel">
+  @if (cargando()) {
+    <p class="vacio">Cargando...</p>
+  } @else {
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Usuario (correo)</th>
+            <th>Tipo</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of empleados(); track e.id) {
+            <tr>
+              <td><strong>{{ e.nombre }}</strong></td>
+              <td>{{ e.email }}</td>
+              <td>
+                <select class="campo" [ngModel]="e.rolId" (ngModelChange)="cambiarTipo(e, $event)">
+                  @for (t of catalogos.tiposEmpleado(); track t.id) {
+                    <option [ngValue]="t.id">{{ t.nombre }}</option>
+                  }
+                </select>
+              </td>
+              <td>
+                <div class="acciones-celda">
+                  <button type="button" class="btn secundario chico" (click)="abrirFormulario(e)">Editar</button>
+                  @if (e.id !== auth.usuario()?.id) {
+                    <button type="button" class="btn peligro chico" (click)="eliminar(e)">Eliminar</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (formulario(); as f) {
+  <app-modal [titulo]="f === 'nuevo' ? 'Nuevo empleado' : 'Editar empleado'" (cerrar)="formulario.set(null)">
+    <form class="formulario" (ngSubmit)="guardar()">
+      <label for="em-nombre">Nombre</label>
+      <input id="em-nombre" class="campo" name="nombre" [(ngModel)]="nombre" maxlength="100" />
+
+      <label for="em-email">Usuario (correo electrónico)</label>
+      <input id="em-email" class="campo" type="email" name="email" [(ngModel)]="email" maxlength="150" autocomplete="off" />
+
+      <label for="em-pass">{{ f === 'nuevo' ? 'Contraseña' : 'Nueva contraseña (opcional)' }}</label>
+      <input id="em-pass" class="campo" type="password" name="password" [(ngModel)]="password" autocomplete="new-password" />
+
+      @if (f === 'nuevo') {
+        <label for="em-rol">Tipo de empleado</label>
+        <select id="em-rol" class="campo" name="rol" [(ngModel)]="rolId">
+          @for (t of catalogos.tiposEmpleado(); track t.id) {
+            <option [ngValue]="t.id">{{ t.nombre }}</option>
+          }
+        </select>
+      } @else {
+        <p class="ayuda">El tipo de empleado se cambia desde la tabla, no desde este formulario.</p>
+      }
+
+      <div class="acciones">
+        <button type="button" class="btn secundario" (click)="formulario.set(null)">Cancelar</button>
+        <button type="submit" class="btn" [disabled]="guardando()">{{ guardando() ? 'Guardando...' : 'Guardar' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}

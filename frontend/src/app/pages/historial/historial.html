@@ -1,0 +1,138 @@
+<div class="pagina-cabecera">
+  <h1>Historial</h1>
+</div>
+
+<div class="pestanas">
+  <button type="button" [class.activa]="pestana() === 'pedidos'" (click)="cambiarPestana('pedidos')">Pedidos</button>
+  <button type="button" [class.activa]="pestana() === 'entradas'" (click)="cambiarPestana('entradas')">Entradas</button>
+  <button type="button" [class.activa]="pestana() === 'salidas'" (click)="cambiarPestana('salidas')">Salidas</button>
+</div>
+
+<div class="filtros">
+  <label class="fila">Desde <input class="campo" type="date" [(ngModel)]="desde" name="desde" /></label>
+  <label class="fila">Hasta <input class="campo" type="date" [(ngModel)]="hasta" name="hasta" /></label>
+  <button type="button" class="btn" (click)="consultar()">Consultar</button>
+  <button type="button" class="btn secundario" (click)="limpiar()">Limpiar</button>
+</div>
+
+<div class="tarjeta-panel">
+  @if (cargando()) {
+    <p class="vacio">Cargando...</p>
+  } @else {
+    @switch (pestana()) {
+      @case ('pedidos') {
+        @if (pedidos().length === 0) {
+          <p class="vacio">No hay pedidos con movimientos en ese rango.</p>
+        } @else {
+          <ul class="lista">
+            @for (p of pedidos(); track p.id) {
+              <li>
+                <span>
+                  <strong>Pedido #{{ p.id }} · {{ p.proveedor }}</strong>
+                  <ul class="linea-tiempo">
+                    @for (c of p.cambios; track c.fechaCambio) {
+                      <li>{{ c.estado }} — {{ c.fechaCambio | date: 'dd/MM/yyyy HH:mm' }}</li>
+                    }
+                  </ul>
+                </span>
+                <span class="insignia">{{ p.estado }}</span>
+              </li>
+            }
+          </ul>
+        }
+      }
+      @case ('entradas') {
+        @if (entradas().length === 0) {
+          <p class="vacio">No hay entradas en ese rango.</p>
+        } @else {
+          <div class="tabla-envoltorio">
+            <table class="tabla">
+              <thead>
+                <tr><th>#</th><th>Fecha</th><th>Pedido</th><th>Tipo</th><th>Estado</th><th></th></tr>
+              </thead>
+              <tbody>
+                @for (e of entradas(); track e.id) {
+                  <tr>
+                    <td>{{ e.id }}</td>
+                    <td>{{ e.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+                    <td>#{{ e.pedidoId }} · {{ e.proveedor }}</td>
+                    <td>{{ e.tipoEntrada }}</td>
+                    <td><app-estado [id]="e.estadoId" [texto]="e.estado" /></td>
+                    <td class="num"><button type="button" class="btn secundario chico" (click)="verEntrada(e.id)">Ver líneas</button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+      @case ('salidas') {
+        @if (salidas().length === 0) {
+          <p class="vacio">No hay salidas en ese rango.</p>
+        } @else {
+          <div class="tabla-envoltorio">
+            <table class="tabla">
+              <thead>
+                <tr><th>#</th><th>Fecha</th><th>Proyecto</th><th>Registrada por</th><th>Estado</th><th></th></tr>
+              </thead>
+              <tbody>
+                @for (s of salidas(); track s.id) {
+                  <tr>
+                    <td>{{ s.id }}</td>
+                    <td>{{ s.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+                    <td>{{ s.proyecto }}</td>
+                    <td>{{ s.empleado }}</td>
+                    <td><app-estado [id]="s.estadoId" [texto]="s.estado" /></td>
+                    <td class="num"><button type="button" class="btn secundario chico" (click)="verSalida(s.id)">Ver líneas</button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    }
+  }
+</div>
+
+@if (detalleEntrada(); as d) {
+  <app-modal [titulo]="'Entrada #' + d.id" [ancho]="true" (cerrar)="detalleEntrada.set(null)">
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead><tr><th>Producto</th><th class="num">Cantidad</th><th>Estado de la línea</th></tr></thead>
+        <tbody>
+          @for (l of d.lineas; track l.id) {
+            <tr><td>{{ l.producto }}</td><td class="num">{{ l.cantidad }}</td><td><app-estado [id]="l.estadoId" [texto]="l.estado" /></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <h3 style="margin-top: 1rem">Registros de estado</h3>
+    <ul class="linea-tiempo">
+      @for (h of d.historial; track h.id) {
+        <li>{{ h.estado }} — {{ h.fechaCambio | date: 'dd/MM/yyyy HH:mm' }}</li>
+      }
+    </ul>
+  </app-modal>
+}
+
+@if (detalleSalida(); as d) {
+  <app-modal [titulo]="'Salida #' + d.id + ' · ' + d.proyecto" [ancho]="true" (cerrar)="detalleSalida.set(null)">
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead><tr><th>Producto entregado</th><th class="num">Cantidad</th><th>Estado de la línea</th></tr></thead>
+        <tbody>
+          @for (l of d.lineas; track l.id) {
+            <tr><td>{{ l.producto }}</td><td class="num">{{ l.cantidad }}</td><td><app-estado [id]="l.estadoId" [texto]="l.estado" /></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <h3 style="margin-top: 1rem">Registros de estado</h3>
+    <ul class="linea-tiempo">
+      @for (h of d.historial; track h.id) {
+        <li>{{ h.estado }} — {{ h.fechaCambio | date: 'dd/MM/yyyy HH:mm' }}</li>
+      }
+    </ul>
+  </app-modal>
+}

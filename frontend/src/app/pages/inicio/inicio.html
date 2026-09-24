@@ -1,0 +1,73 @@
+<div class="pagina-cabecera">
+  <h1>Hola, {{ auth.usuario()?.nombre }}</h1>
+</div>
+
+<div class="acciones-rapidas">
+  <a class="btn" routerLink="/salidas" [queryParams]="{ nueva: 1 }">Registrar salida</a>
+  <a class="btn" routerLink="/entradas" [queryParams]="{ nueva: 1 }">Registrar entrada</a>
+  <a class="btn secundario" routerLink="/productos" [queryParams]="{ escanear: 1 }">Escanear producto</a>
+  <a class="btn secundario" routerLink="/pedidos" [queryParams]="{ nuevo: 1 }">Nuevo pedido</a>
+</div>
+
+@if (cargando()) {
+  <p class="vacio">Cargando resumen...</p>
+} @else if (resumen(); as r) {
+  <div class="resumen">
+    <div class="tarjeta-panel">
+      <small>Productos</small>
+      <strong>{{ r.totales.productos }}</strong>
+    </div>
+    <div class="tarjeta-panel">
+      <small>En stock bajo</small>
+      <strong [class.error-texto]="r.stockBajo.length > 0">{{ r.stockBajo.length }}</strong>
+    </div>
+    <div class="tarjeta-panel">
+      <small>Proyectos en curso</small>
+      <strong>{{ r.proyectosEnCurso.length }}</strong>
+    </div>
+    <div class="tarjeta-panel">
+      <small>Notificaciones sin leer</small>
+      <strong>{{ r.notificacionesNoLeidas }}</strong>
+    </div>
+  </div>
+
+  <div class="rejilla">
+    <section class="tarjeta-panel">
+      <h2>Productos en stock bajo</h2>
+      @if (r.stockBajo.length === 0) {
+        <p class="vacio">Todos los productos están por encima de su mínimo.</p>
+      } @else {
+        <ul class="lista">
+          @for (p of r.stockBajo; track p.id) {
+            <li>
+              <span>
+                <strong>{{ p.nombre }}</strong><br />
+                <small>{{ p.categoria }} · mínimo {{ p.cantidadMinimaStock }}</small>
+              </span>
+              <span class="insignia bajo">{{ p.stockActual }} en stock</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="tarjeta-panel">
+      <h2>Proyectos en curso</h2>
+      @if (r.proyectosEnCurso.length === 0) {
+        <p class="vacio">No hay proyectos en curso.</p>
+      } @else {
+        <ul class="lista">
+          @for (p of r.proyectosEnCurso; track p.id) {
+            <li>
+              <span>
+                <strong>{{ p.nombre }}</strong><br />
+                <small>{{ p.totalEmpleados }} empleado(s) · creado {{ p.creadoEn | date: 'dd/MM/yyyy' }}</small>
+              </span>
+              <app-estado [id]="p.estadoId" [texto]="p.estado" />
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}

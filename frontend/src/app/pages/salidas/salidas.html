@@ -1,0 +1,155 @@
+<div class="pagina-cabecera">
+  <h1>Salidas</h1>
+  <button type="button" class="btn" (click)="abrirNueva()">Registrar salida</button>
+</div>
+
+<div class="filtros">
+  <select class="campo" [ngModel]="estadoFiltro()" (ngModelChange)="estadoFiltro.set($event); cargar()">
+    <option value="">Todos los estados</option>
+    @for (e of catalogos.estados(); track e.id) {
+      <option [ngValue]="e.id">{{ e.nombre }}</option>
+    }
+  </select>
+</div>
+
+<div class="tarjeta-panel">
+  @if (cargando()) {
+    <p class="vacio">Cargando...</p>
+  } @else if (salidas().length === 0) {
+    <p class="vacio">No hay salidas registradas.</p>
+  } @else {
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fecha</th>
+            <th>Proyecto</th>
+            <th>Registrada por</th>
+            <th>Estado</th>
+            <th class="num">Líneas</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of salidas(); track s.id) {
+            <tr>
+              <td>{{ s.id }}</td>
+              <td>{{ s.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td><strong>{{ s.proyecto }}</strong></td>
+              <td>{{ s.empleado }}</td>
+              <td><app-estado [id]="s.estadoId" [texto]="s.estado" /></td>
+              <td class="num">{{ s.totalLineas }}</td>
+              <td>
+                <div class="acciones-celda">
+                  <button type="button" class="btn secundario chico" (click)="abrir(s.id)">Ver detalle</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (nueva()) {
+  <app-modal titulo="Registrar salida de productos" [ancho]="true" (cerrar)="nueva.set(false)">
+    <form class="formulario" (ngSubmit)="registrar()">
+      <label for="s-proyecto">Proyecto (en curso)</label>
+      <select id="s-proyecto" class="campo" name="proyecto" [(ngModel)]="proyectoId">
+        <option [ngValue]="null">Selecciona un proyecto...</option>
+        @for (p of proyectos(); track p.id) {
+          <option [ngValue]="p.id">{{ p.nombre }}</option>
+        }
+      </select>
+      @if (proyectos().length === 0) {
+        <p class="ayuda error-texto">No hay proyectos en curso. Crea uno o cambia el estado de un proyecto.</p>
+      }
+
+      <label>Productos que salen</label>
+      <app-lineas-editor
+        [(lineas)]="lineas"
+        [mostrarStock]="true"
+        [habilitado]="!!proyectoId"
+        aviso="Primero selecciona el proyecto; luego podrás escanear."
+      />
+
+      <p class="ayuda">El sistema valida el stock al registrar; si alguna cantidad lo supera, no se registra nada.</p>
+      <div class="acciones">
+        <button type="button" class="btn secundario" (click)="nueva.set(false)">Cancelar</button>
+        <button type="submit" class="btn" [disabled]="guardando()">{{ guardando() ? 'Registrando...' : 'Registrar salida' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (detalle(); as d) {
+  <app-modal [titulo]="'Salida #' + d.id" [ancho]="true" (cerrar)="detalle.set(null)">
+    <dl class="datos">
+      <div><dt>Proyecto</dt><dd>{{ d.proyecto }}</dd></div>
+      <div><dt>Registrada por</dt><dd>{{ d.empleado }}</dd></div>
+      <div><dt>Fecha</dt><dd>{{ d.fecha | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
+      <div>
+        <dt>Estado de la salida</dt>
+        <dd>
+          <select class="campo" [ngModel]="d.estadoId" (ngModelChange)="cambiarEstado($event)">
+            @for (e of catalogos.estados(); track e.id) {
+              <option [ngValue]="e.id">{{ e.nombre }}</option>
+            }
+          </select>
+        </dd>
+      </div>
+    </dl>
+
+    <h3>Líneas de producto</h3>
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="num">Cantidad</th>
+            <th>Estado de la línea</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of d.lineas; track l.id) {
+            <tr>
+              <td>{{ l.producto }}<br /><small>{{ l.codigoQrBarras }}</small></td>
+              <td class="num">
+                @if (l.estadoId === COMPLETADO || d.estadoId === COMPLETADO) {
+                  {{ l.cantidad }}
+                } @else {
+                  <input
+                    class="campo cantidad"
+                    type="number"
+                    min="1"
+                    [value]="l.cantidad"
+                    (change)="editarCantidad(l.id, +$any($event.target).value)"
+                  />
+                }
+              </td>
+              <td>
+                <select class="campo" [ngModel]="l.estadoId" (ngModelChange)="cambiarEstadoLinea(l.id, $event)">
+                  @for (e of catalogos.estadosLinea(); track e.id) {
+                    <option [ngValue]="e.id">{{ e.nombre }}</option>
+                  }
+                </select>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="ayuda">
+      Los estados se cambian a mano, sin depender de las líneas. Una línea completada ya no se edita.
+    </p>
+
+    <h3 style="margin-top: 1rem">Historial de estados</h3>
+    <ul class="linea-tiempo">
+      @for (h of d.historial; track h.id) {
+        <li>{{ h.estado }} — {{ h.fechaCambio | date: 'dd/MM/yyyy HH:mm' }}</li>
+      }
+    </ul>
+  </app-modal>
+}

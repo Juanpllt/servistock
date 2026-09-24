@@ -1,0 +1,47 @@
+<div class="app">
+  <aside class="lateral" [class.abierto]="menuAbierto()">
+    <div class="marca">
+      <span class="marca-logo">S</span>
+      <div>
+        <strong>Servistock</strong>
+        <small>Servingeniería</small>
+      </div>
+    </div>
+    <nav>
+      @for (enlace of enlaces; track enlace.ruta) {
+        @if (visible(enlace)) {
+          <a [routerLink]="enlace.ruta" routerLinkActive="activo">{{ enlace.texto }}</a>
+        }
+      }
+      <a routerLink="/notificaciones" routerLinkActive="activo">
+        Notificaciones
+        @if (notificaciones.noLeidas() > 0) {
+          <span class="contador">{{ notificaciones.noLeidas() }}</span>
+        }
+      </a>
+      <a routerLink="/cuenta" routerLinkActive="activo">Mi cuenta</a>
+    </nav>
+  </aside>
+
+  @if (menuAbierto()) {
+    <div class="lateral-fondo" (click)="menuAbierto.set(false)"></div>
+  }
+
+  <div class="principal">
+    <header class="barra">
+      <button type="button" class="icono menu-boton" (click)="menuAbierto.set(!menuAbierto())" aria-label="Menú">☰</button>
+      <span class="en-vivo" [class.activo]="realtime.conectado()" [title]="realtime.conectado() ? 'Actualización en vivo' : 'Sin conexión en vivo'">
+        <i></i>{{ realtime.conectado() ? 'En vivo' : 'Sin conexión' }}
+      </span>
+      <span class="espacio"></span>
+      <a routerLink="/notificaciones" class="campana" aria-label="Notificaciones">
+        🔔 @if (notificaciones.noLeidas() > 0) { <span class="contador">{{ notificaciones.noLeidas() }}</span> }
+      </a>
+      <span class="usuario">{{ auth.usuario()?.nombre }} <em>{{ auth.usuario()?.rol }}</em></span>
+      <button type="button" class="btn secundario chico" (click)="auth.logout()">Salir</button>
+    </header>
+    <main class="contenido">
+      <router-outlet />
+    </main>
+  </div>
+</div>

@@ -1,0 +1,166 @@
+<div class="pagina-cabecera">
+  <h1>Entradas</h1>
+  <button type="button" class="btn" (click)="abrirNueva()">Registrar entrada</button>
+</div>
+
+<div class="filtros">
+  <select class="campo" [ngModel]="estadoFiltro()" (ngModelChange)="estadoFiltro.set($event); cargar()">
+    <option value="">Todos los estados</option>
+    @for (e of catalogos.estados(); track e.id) {
+      <option [ngValue]="e.id">{{ e.nombre }}</option>
+    }
+  </select>
+</div>
+
+<div class="tarjeta-panel">
+  @if (cargando()) {
+    <p class="vacio">Cargando...</p>
+  } @else if (entradas().length === 0) {
+    <p class="vacio">No hay entradas registradas.</p>
+  } @else {
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fecha</th>
+            <th>Pedido</th>
+            <th>Tipo</th>
+            <th>Registrada por</th>
+            <th>Estado</th>
+            <th class="num">Líneas</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of entradas(); track e.id) {
+            <tr>
+              <td>{{ e.id }}</td>
+              <td>{{ e.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td>#{{ e.pedidoId }} · {{ e.proveedor }}</td>
+              <td>{{ e.tipoEntrada }}</td>
+              <td>{{ e.empleado }}</td>
+              <td><app-estado [id]="e.estadoId" [texto]="e.estado" /></td>
+              <td class="num">{{ e.totalLineas }}</td>
+              <td>
+                <div class="acciones-celda">
+                  <button type="button" class="btn secundario chico" (click)="abrir(e.id)">Ver detalle</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (nueva()) {
+  <app-modal titulo="Registrar entrada de mercancía" [ancho]="true" (cerrar)="nueva.set(false)">
+    <form class="formulario" (ngSubmit)="registrar()">
+      <div class="rejilla">
+        <div class="formulario">
+          <label for="e-pedido">Pedido asociado (obligatorio)</label>
+          <select id="e-pedido" class="campo" name="pedido" [(ngModel)]="pedidoId">
+            <option [ngValue]="null">Selecciona un pedido...</option>
+            @for (p of pedidos(); track p.id) {
+              <option [ngValue]="p.id">#{{ p.id }} · {{ p.proveedor }} ({{ p.estado }})</option>
+            }
+          </select>
+        </div>
+        <div class="formulario">
+          <label for="e-tipo">Tipo de entrada</label>
+          <select id="e-tipo" class="campo" name="tipo" [(ngModel)]="tipoEntradaId">
+            @for (t of catalogos.tiposEntrada(); track t.id) {
+              <option [ngValue]="t.id">{{ t.nombre }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <label>Productos recibidos</label>
+      <app-lineas-editor
+        [(lineas)]="lineas"
+        [habilitado]="!!pedidoId && !!tipoEntradaId"
+        aviso="Primero selecciona el pedido y el tipo de entrada; luego podrás escanear."
+      />
+
+      <p class="ayuda">Al registrar, el stock de cada producto aumenta de inmediato. Luego confirma o descarta cada línea.</p>
+      <div class="acciones">
+        <button type="button" class="btn secundario" (click)="nueva.set(false)">Cancelar</button>
+        <button type="submit" class="btn" [disabled]="guardando()">{{ guardando() ? 'Registrando...' : 'Registrar entrada' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (detalle(); as d) {
+  <app-modal [titulo]="'Entrada #' + d.id" [ancho]="true" (cerrar)="detalle.set(null)">
+    <dl class="datos">
+      <div><dt>Pedido</dt><dd>#{{ d.pedidoId }} · {{ d.proveedor }}</dd></div>
+      <div><dt>Tipo</dt><dd>{{ d.tipoEntrada }}</dd></div>
+      <div><dt>Registrada por</dt><dd>{{ d.empleado }}</dd></div>
+      <div><dt>Fecha</dt><dd>{{ d.fecha | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
+      <div>
+        <dt>Estado de la entrada</dt>
+        <dd>
+          <select class="campo" [ngModel]="d.estadoId" (ngModelChange)="cambiarEstado($event)">
+            @for (e of catalogos.estados(); track e.id) {
+              <option [ngValue]="e.id">{{ e.nombre }}</option>
+            }
+          </select>
+        </dd>
+      </div>
+    </dl>
+
+    <h3>Líneas de producto</h3>
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="num">Cantidad</th>
+            <th>Estado de la línea</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of d.lineas; track l.id) {
+            <tr>
+              <td>{{ l.producto }}<br /><small>{{ l.codigoQrBarras }}</small></td>
+              <td class="num">
+                @if (l.estadoId === COMPLETADO || d.estadoId === COMPLETADO) {
+                  {{ l.cantidad }}
+                } @else {
+                  <input
+                    class="campo cantidad"
+                    type="number"
+                    min="1"
+                    [value]="l.cantidad"
+                    (change)="editarCantidad(l.id, +$any($event.target).value)"
+                  />
+                }
+              </td>
+              <td>
+                <select class="campo" [ngModel]="l.estadoId" (ngModelChange)="cambiarEstadoLinea(l.id, $event)">
+                  @for (e of catalogos.estadosLinea(); track e.id) {
+                    <option [ngValue]="e.id">{{ e.nombre }}</option>
+                  }
+                </select>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="ayuda">
+      Los estados se cambian a mano: puedes completar la entrada aunque alguna línea esté cancelada. Una línea completada ya no se edita.
+    </p>
+
+    <h3 style="margin-top: 1rem">Historial de estados</h3>
+    <ul class="linea-tiempo">
+      @for (h of d.historial; track h.id) {
+        <li>{{ h.estado }} — {{ h.fechaCambio | date: 'dd/MM/yyyy HH:mm' }}</li>
+      }
+    </ul>
+  </app-modal>
+}

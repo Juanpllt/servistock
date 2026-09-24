@@ -1,0 +1,43 @@
+# Configuración declarativa de Kong (modo DB-less): no necesita base de datos.
+# Kong recibe todo el tráfico en el puerto 8000 y lo reenvía al backend de Servistock.
+_format_version: "3.0"
+
+services:
+  - name: servistock-api
+    # host.docker.internal = tu computador visto desde dentro del contenedor (backend en el puerto 3000).
+    url: http://app:3000
+    connect_timeout: 5000
+    read_timeout: 60000 # las exportaciones a Excel pueden tardar
+    routes:
+      # API REST. strip_path: false -> el backend recibe /api/... tal cual.
+      - name: servistock-rest
+        paths: [/api]
+        strip_path: false
+        protocols: [http, https]
+        plugins:
+          # Límite de peticiones por IP (protege contra abuso). El backend ya limita el login por su cuenta.
+          - name: rate-limiting
+            config:
+              minute: 300
+              policy: local
+              limit_by: ip
+              fault_tolerant: true
+              hide_client_headers: false
+          # Rechaza cuerpos enormes antes de que lleguen al backend
+          - name: request-size-limiting
+            config:
+              allowed_payload_size: 1 # MB
+
+      # Tiempo real (Socket.IO: polling y WebSocket). Sin límite por minuto: son conexiones largas.
+      - name: servistock-socketio
+        paths: [/socket.io]
+        strip_path: false
+        protocols: [http, https]
+
+    plugins:
+      # Un X-Request-Id por petición: el backend lo reutiliza en sus logs (trazabilidad de extremo a extremo)
+      - name: correlation-id
+        config:
+          header_name: X-Request-Id
+          generator: uuid
+          echo_downstream: true

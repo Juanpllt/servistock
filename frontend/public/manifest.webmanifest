@@ -1,0 +1,17 @@
+{
+  "name": "Servistock — Inventario Servingeniería",
+  "short_name": "Servistock",
+  "description": "Gestión de inventario, pedidos, entradas, salidas y proyectos de Servingeniería.",
+  "lang": "es",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f1f3f7",
+  "theme_color": "#172036",
+  "scope": "./",
+  "start_url": "./",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

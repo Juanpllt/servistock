@@ -1,0 +1,31 @@
+# Kong como API Gateway delante del backend de Servistock.
+#   Arrancar:  docker compose -f docker-compose.kong.yml up -d
+#   Detener:   docker compose -f docker-compose.kong.yml down
+# Kong escucha en http://localhost:8000 y reenvía a tu backend (puerto 3000).
+services:
+  kong:
+    image: kong:3.7
+    container_name: servistock-kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      # El Admin API queda solo dentro del contenedor (nunca expuesto al exterior)
+      KONG_ADMIN_LISTEN: 127.0.0.1:8001
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+    volumes:
+      - ./kong/kong.yml:/kong/kong.yml:ro
+    ports:
+      - "8000:8000"
+    # Permite llegar al backend que corre en tu computador (Windows/Mac ya lo traen; en Linux hace falta esto)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped

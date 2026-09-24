@@ -1,0 +1,191 @@
+<div class="pagina-cabecera">
+  <h1>Proyectos</h1>
+  <button type="button" class="btn" (click)="abrirFormulario('nuevo')">Nuevo proyecto</button>
+</div>
+
+<div class="filtros">
+  <input
+    class="campo"
+    placeholder="Buscar por nombre"
+    [ngModel]="buscar()"
+    (ngModelChange)="buscar.set($event)"
+    (keydown.enter)="cargar()"
+  />
+  <select class="campo" [ngModel]="estadoFiltro()" (ngModelChange)="estadoFiltro.set($event); cargar()">
+    <option value="">Todos los estados</option>
+    @for (e of catalogos.estados(); track e.id) {
+      <option [ngValue]="e.id">{{ e.nombre }}</option>
+    }
+  </select>
+  <button type="button" class="btn secundario" (click)="cargar()">Buscar</button>
+</div>
+
+<div class="tarjeta-panel">
+  @if (cargando()) {
+    <p class="vacio">Cargando...</p>
+  } @else if (proyectos().length === 0) {
+    <p class="vacio">No hay proyectos que coincidan.</p>
+  } @else {
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Proyecto</th>
+            <th>Estado</th>
+            <th class="num">Empleados</th>
+            <th>Creado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of proyectos(); track p.id) {
+            <tr>
+              <td>{{ p.id }}</td>
+              <td>
+                <strong>{{ p.nombre }}</strong><br /><small>{{ p.descripcion }}</small>
+              </td>
+              <td><app-estado [id]="p.estadoId" [texto]="p.estado" /></td>
+              <td class="num">{{ p.totalEmpleados }}</td>
+              <td>{{ p.creadoEn | date: 'dd/MM/yyyy' }}</td>
+              <td>
+                <div class="acciones-celda">
+                  <button type="button" class="btn secundario chico" (click)="abrir(p.id)">Ver detalle</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (detalle(); as d) {
+  <app-modal [titulo]="d.nombre" [ancho]="true" (cerrar)="detalle.set(null)">
+    <dl class="datos">
+      <div><dt>Descripción</dt><dd>{{ d.descripcion || 'Sin descripción' }}</dd></div>
+      <div><dt>Creado</dt><dd>{{ d.creadoEn | date: 'dd/MM/yyyy' }}</dd></div>
+      <div>
+        <dt>Estado</dt>
+        <dd>
+          <select class="campo" [ngModel]="d.estadoId" (ngModelChange)="cambiarEstado($event)">
+            @for (e of catalogos.estados(); track e.id) {
+              <option [ngValue]="e.id">{{ e.nombre }}</option>
+            }
+          </select>
+        </dd>
+      </div>
+    </dl>
+    <div class="acciones-rapidas">
+      <button type="button" class="btn secundario" (click)="abrirFormulario('editar')">Editar nombre y descripción</button>
+      <small class="tenue">Un proyecto completado o cancelado ya no se edita.</small>
+    </div>
+
+    <h3>Empleados asignados</h3>
+    @if (d.empleados.length === 0) {
+      <p class="vacio">Aún no hay empleados asignados.</p>
+    } @else {
+      <div class="tabla-envoltorio">
+        <table class="tabla">
+          <thead>
+            <tr><th>Empleado</th><th>Participación</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (e of d.empleados; track e.empleadoId) {
+              <tr>
+                <td>{{ e.nombre }}<br /><small>{{ e.email }}</small></td>
+                <td>
+                  <select class="campo" [ngModel]="e.tipoParticipacionId" (ngModelChange)="reasignar(e.empleadoId, $event)">
+                    @for (t of catalogos.tiposParticipacion(); track t.id) {
+                      <option [ngValue]="t.id">{{ t.nombre }}</option>
+                    }
+                  </select>
+                </td>
+                <td class="num">
+                  <button type="button" class="btn peligro chico" (click)="retirar(e.empleadoId, e.nombre)">Retirar</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <div class="fila" style="margin-top: 0.7rem">
+      <select class="campo" [(ngModel)]="nuevoEmpleadoId" name="nuevo-empleado">
+        <option [ngValue]="null">Asignar empleado...</option>
+        @for (e of empleados(); track e.id) {
+          <option [ngValue]="e.id">{{ e.nombre }}</option>
+        }
+      </select>
+      <select class="campo" [(ngModel)]="nuevoTipoId" name="nuevo-tipo">
+        @for (t of catalogos.tiposParticipacion(); track t.id) {
+          <option [ngValue]="t.id">{{ t.nombre }}</option>
+        }
+      </select>
+      <button type="button" class="btn" (click)="asignar()">Asignar</button>
+    </div>
+
+    <h3 style="margin-top: 1.2rem">Productos usados en el proyecto</h3>
+    @if (consumo().length === 0) {
+      <p class="vacio">Todavía no hay salidas de productos para este proyecto.</p>
+    } @else {
+      <div class="tabla-envoltorio">
+        <table class="tabla">
+          <thead>
+            <tr><th>Producto</th><th>Código</th><th class="num">Cantidad total</th></tr>
+          </thead>
+          <tbody>
+            @for (c of consumo(); track c.productoId) {
+              <tr>
+                <td>{{ c.producto }}</td>
+                <td>{{ c.codigoQrBarras }}</td>
+                <td class="num"><strong>{{ c.cantidadTotal }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <h3 style="margin-top: 1.2rem">Salidas registradas</h3>
+    @if (d.salidas.length === 0) {
+      <p class="vacio">Sin salidas.</p>
+    } @else {
+      <ul class="lista">
+        @for (s of d.salidas; track s.id) {
+          <li>
+            <span>Salida #{{ s.id }} · {{ s.empleado }} · {{ s.fecha | date: 'dd/MM/yyyy HH:mm' }} · {{ s.totalLineas }} línea(s)</span>
+            <span class="insignia">{{ s.estado }}</span>
+          </li>
+        }
+      </ul>
+    }
+
+    <h3 style="margin-top: 1.2rem">Historial de estados</h3>
+    <ul class="linea-tiempo">
+      @for (h of d.historial; track h.id) {
+        <li>{{ h.estado }} — {{ h.fechaCambio | date: 'dd/MM/yyyy HH:mm' }}</li>
+      }
+    </ul>
+  </app-modal>
+}
+
+@if (formulario(); as modo) {
+  <app-modal [titulo]="modo === 'nuevo' ? 'Nuevo proyecto' : 'Editar proyecto'" (cerrar)="formulario.set(null)">
+    <form class="formulario" (ngSubmit)="guardar()">
+      <label for="pr-nombre">Nombre</label>
+      <input id="pr-nombre" class="campo" name="nombre" [(ngModel)]="nombre" maxlength="150" />
+      <label for="pr-desc">Descripción</label>
+      <textarea id="pr-desc" class="campo" name="descripcion" [(ngModel)]="descripcion" maxlength="2000"></textarea>
+      @if (modo === 'nuevo') {
+        <p class="ayuda">El proyecto se crea «En curso», listo para registrar salidas de productos.</p>
+      }
+      <div class="acciones">
+        <button type="button" class="btn secundario" (click)="formulario.set(null)">Cancelar</button>
+        <button type="submit" class="btn" [disabled]="guardando()">{{ guardando() ? 'Guardando...' : 'Guardar' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}

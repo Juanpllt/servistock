@@ -1,0 +1,144 @@
+<div class="pagina-cabecera">
+  <h1>Productos</h1>
+  <button type="button" class="btn secundario" (click)="escaner.set(true)">Escanear QR</button>
+  <button type="button" class="btn" (click)="abrirFormulario()">Nuevo producto</button>
+</div>
+
+<div class="filtros">
+  <input
+    class="campo"
+    placeholder="Buscar por nombre"
+    [ngModel]="buscar()"
+    (ngModelChange)="buscar.set($event)"
+    (keydown.enter)="cargar()"
+  />
+  <select class="campo" [ngModel]="categoriaFiltro()" (ngModelChange)="categoriaFiltro.set($event); cargar()">
+    <option value="">Todas las categorías</option>
+    @for (c of catalogos.categorias(); track c.id) {
+      <option [ngValue]="c.id">{{ c.nombre }}</option>
+    }
+  </select>
+  <button type="button" class="btn secundario" (click)="cargar()">Buscar</button>
+</div>
+
+<div class="tarjeta-panel">
+  @if (cargando()) {
+    <p class="vacio">Cargando...</p>
+  } @else if (productos().length === 0) {
+    <p class="vacio">No hay productos que coincidan.</p>
+  } @else {
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Código</th>
+            <th class="num">Stock</th>
+            <th class="num">Mínimo</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of productos(); track p.id) {
+            <tr>
+              <td>
+                <strong>{{ p.nombre }}</strong>
+              </td>
+              <td>{{ p.categoria }}</td>
+              <td>{{ p.codigoQrBarras }}</td>
+              <td class="num">
+                <span class="insignia" [class.bajo]="p.stockBajo" [class.completado]="!p.stockBajo">{{ p.stockActual }}</span>
+              </td>
+              <td class="num">{{ p.cantidadMinimaStock }}</td>
+              <td>
+                <div class="acciones-celda">
+                  <button type="button" class="btn secundario chico" (click)="ver(p)">Ver / QR</button>
+                  <button type="button" class="btn secundario chico" (click)="abrirFormulario(p)">Editar</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (detalle(); as p) {
+  <app-modal [titulo]="p.nombre" (cerrar)="detalle.set(null)">
+    <dl class="datos">
+      <div><dt>Categoría</dt><dd>{{ p.categoria }}</dd></div>
+      <div>
+        <dt>Código QR / barras</dt>
+        <dd>
+          {{ p.codigoQrBarras }}
+          <button type="button" class="btn secundario chico" (click)="copiarCodigo(p.codigoQrBarras)">Copiar código</button>
+        </dd>
+      </div>
+      <div>
+        <dt>Stock actual</dt>
+        <dd [class.error-texto]="p.stockBajo">{{ p.stockActual }}</dd>
+      </div>
+      <div><dt>Cantidad mínima</dt><dd>{{ p.cantidadMinimaStock }}</dd></div>
+    </dl>
+    @if (p.stockBajo) {
+      <p class="error-texto">El stock está en o por debajo del mínimo.</p>
+    }
+    @if (qrImagen()) {
+      <img class="qr-imagen" [src]="qrImagen()" alt="Código QR del producto" />
+      <div class="acciones fila" style="justify-content: center">
+        <button type="button" class="btn secundario" (click)="copiarQr()">Copiar QR</button>
+        <button type="button" class="btn secundario" (click)="descargarQr()">Descargar QR</button>
+      </div>
+    }
+  </app-modal>
+}
+
+@if (formulario(); as f) {
+  <app-modal [titulo]="f === 'nuevo' ? 'Nuevo producto' : 'Editar producto'" (cerrar)="formulario.set(null)">
+    <form class="formulario" (ngSubmit)="guardar()">
+      <label for="p-nombre">Nombre</label>
+      <input id="p-nombre" class="campo" name="nombre" [(ngModel)]="nombre" maxlength="150" />
+
+      <label for="p-categoria">Categoría</label>
+      <select id="p-categoria" class="campo" name="categoria" [(ngModel)]="categoriaId">
+        @for (c of catalogos.categorias(); track c.id) {
+          <option [ngValue]="c.id">{{ c.nombre }}</option>
+        }
+      </select>
+
+      <label for="p-minimo">Cantidad mínima en stock</label>
+      <input id="p-minimo" class="campo" type="number" min="0" name="minimo" [(ngModel)]="minimo" />
+
+      <label for="p-codigo">Código QR / de barras</label>
+      <div class="fila">
+        <input id="p-codigo" class="campo" name="codigo" [(ngModel)]="codigo" maxlength="100" />
+        <button type="button" class="btn secundario" (click)="abrirEscanerFormulario()">Escanear</button>
+        <button type="button" class="btn secundario" (click)="generarCodigo()">Generar código</button>
+        <button type="button" class="btn secundario" (click)="copiarCodigo(codigo)" [disabled]="!codigo">Copiar</button>
+      </div>
+      <p class="ayuda">
+        Si el producto ya trae QR o código de barras, pulsa «Escanear» (cámara o lector USB) o escríbelo. Si no trae,
+        pulsa «Generar código».
+      </p>
+
+      @if (f === 'nuevo') {
+        <p class="ayuda">El stock inicial es 0. Cambia únicamente con entradas y salidas.</p>
+      }
+
+      <div class="acciones">
+        <button type="button" class="btn secundario" (click)="formulario.set(null)">Cancelar</button>
+        <button type="submit" class="btn" [disabled]="guardando()">{{ guardando() ? 'Guardando...' : 'Guardar' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (escaner()) {
+  <app-escaner-qr (codigo)="consultarPorCodigo($event)" (cerrar)="escaner.set(false)" />
+}
+
+@if (escanerFormulario()) {
+  <app-escaner-qr (codigo)="usarCodigoEscaneado($event)" (cerrar)="escanerFormulario.set(false)" />
+}

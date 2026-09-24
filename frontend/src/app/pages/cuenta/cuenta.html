@@ -1,0 +1,21 @@
+<div class="pagina-cabecera">
+  <h1>Mi cuenta</h1>
+</div>
+
+<section class="tarjeta-panel" style="max-width: 520px">
+  <p class="ayuda">Tipo de empleado: <strong>{{ auth.usuario()?.rol }}</strong></p>
+  <form class="formulario" (ngSubmit)="guardar()">
+    <label for="c-nombre">Nombre</label>
+    <input id="c-nombre" class="campo" name="nombre" [(ngModel)]="nombre" maxlength="100" />
+
+    <label for="c-email">Usuario (correo electrónico)</label>
+    <input id="c-email" class="campo" type="email" name="email" [(ngModel)]="email" maxlength="150" />
+
+    <label for="c-pass">Nueva contraseña (déjala vacía para conservar la actual)</label>
+    <input id="c-pass" class="campo" type="password" name="password" [(ngModel)]="password" autocomplete="new-password" />
+
+    <div class="acciones">
+      <button type="submit" class="btn" [disabled]="guardando()">{{ guardando() ? 'Guardando...' : 'Guardar cambios' }}</button>
+    </div>
+  </form>
+</section>

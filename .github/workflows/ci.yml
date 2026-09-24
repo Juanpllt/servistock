@@ -1,0 +1,114 @@
+name: CI
+
+# Se ejecuta en cada push a main y en cada Pull Request (estrategia GitHub Flow).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (tipos, lint y pruebas)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      JWT_SECRET: secreto-solo-para-ci
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Chequeo de tipos (TypeScript estricto)
+        run: npm run typecheck
+      - name: Lint (ESLint)
+        run: npm run lint
+      # Las pruebas de integración recrean la base "servistack_test" en PostgreSQL real
+      - name: Pruebas de integración
+        run: npm test
+
+  frontend:
+    name: Frontend (compilación y pruebas)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Compilación de producción
+        run: npx ng build
+      - name: Pruebas unitarias
+        run: npx ng test --watch=false
+
+  docker:
+    name: Docker (imagen y arranque completo)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar .env con los valores de ejemplo
+        run: cp .env.example .env
+      - name: Construir y levantar base de datos + aplicación
+        run: docker compose up -d --build --wait --wait-timeout 180
+      - name: Comprobar que la aplicación responde
+        run: |
+          curl --fail --silent http://localhost:8080/api/salud
+          curl --fail --silent --head http://localhost:8080/ > /dev/null
+      - name: Registros si algo falló
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Apagar
+        if: always()
+        run: docker compose down -v
+
+  # Análisis estático con SonarCloud. Solo corre si defines el secreto SONAR_TOKEN en GitHub
+  # (Settings > Secrets and variables > Actions) y completas sonar-project.properties.
+  sonarcloud:
+    name: SonarCloud (análisis estático)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0 # Sonar necesita el historial completo para detectar código nuevo
+      - name: Escaneo
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+      - name: Omitido (falta SONAR_TOKEN)
+        if: env.SONAR_TOKEN == ''
+        run: echo "SonarCloud omitido - define el secreto SONAR_TOKEN para activarlo."

@@ -1,0 +1,15 @@
+<div class="pagina-cabecera">
+  <h1>Exportar a Excel</h1>
+</div>
+
+<div class="rejilla">
+  @for (o of opciones; track o.tipo) {
+    <section class="tarjeta-panel">
+      <h2>{{ o.titulo }}</h2>
+      <p class="ayuda">{{ o.descripcion }}</p>
+      <button type="button" class="btn" [disabled]="descargando() !== null" (click)="exportar(o)">
+        {{ descargando() === o.tipo ? 'Generando...' : 'Descargar .xlsx' }}
+      </button>
+    </section>
+  }
+</div>

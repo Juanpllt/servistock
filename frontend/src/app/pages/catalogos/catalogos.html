@@ -1,0 +1,45 @@
+<div class="pagina-cabecera">
+  <h1>Catálogos</h1>
+</div>
+
+<div class="pestanas" style="flex-wrap: wrap">
+  @for (d of definiciones; track d.ruta; let i = $index) {
+    <button type="button" [class.activa]="seleccionado() === i" (click)="elegir(i)">{{ d.titulo }}</button>
+  }
+</div>
+
+<div class="tarjeta-panel">
+  <h2>{{ actual().titulo }}</h2>
+  @if (actual().ayuda) {
+    <p class="ayuda">{{ actual().ayuda }}</p>
+  }
+  @if (!puedeEscribir()) {
+    <p class="ayuda">Solo un Administrador puede crear o editar este catálogo.</p>
+  }
+
+  <ul class="lista">
+    @for (item of items(); track item.id) {
+      <li>
+        @if (editandoId() === item.id) {
+          <input class="campo" [(ngModel)]="nombreEditado" name="editado" maxlength="80" (keydown.enter)="guardar(item)" />
+          <span class="fila">
+            <button type="button" class="btn chico" (click)="guardar(item)">Guardar</button>
+            <button type="button" class="btn secundario chico" (click)="editandoId.set(null)">Cancelar</button>
+          </span>
+        } @else {
+          <span>{{ item.nombre }}</span>
+          @if (puedeEscribir()) {
+            <button type="button" class="btn secundario chico" (click)="editar(item)">Editar</button>
+          }
+        }
+      </li>
+    }
+  </ul>
+
+  @if (puedeEscribir()) {
+    <form class="fila" style="margin-top: 0.8rem" (ngSubmit)="agregar()">
+      <input class="campo" name="nuevo" [(ngModel)]="nombreNuevo" placeholder="Nombre del nuevo valor" maxlength="80" />
+      <button type="submit" class="btn">Agregar</button>
+    </form>
+  }
+</div>

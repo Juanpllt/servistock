@@ -1,0 +1,20 @@
+# Nunca deben entrar a la imagen
+.git
+**/.git
+**/node_modules
+**/dist
+**/.angular
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+
+# Carpetas que no forman parte de la aplicación
+ejercicios
+kong
+docs
+.github
+*.md
+docker-compose*.yml
+backend/test
+backend/scripts

@@ -1,0 +1,120 @@
+<div class="pagina-cabecera">
+  <h1>Pedidos</h1>
+  <button type="button" class="btn" (click)="abrirFormulario('nuevo')">Nuevo pedido</button>
+</div>
+
+<div class="filtros">
+  <select class="campo" [ngModel]="estadoFiltro()" (ngModelChange)="estadoFiltro.set($event); cargar()">
+    <option value="">Todos los estados</option>
+    @for (e of catalogos.estados(); track e.id) {
+      <option [ngValue]="e.id">{{ e.nombre }}</option>
+    }
+  </select>
+</div>
+
+<div class="tarjeta-panel">
+  @if (cargando()) {
+    <p class="vacio">Cargando...</p>
+  } @else if (pedidos().length === 0) {
+    <p class="vacio">No hay pedidos registrados.</p>
+  } @else {
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Proveedor</th>
+            <th>Creado por</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th class="num">Entradas</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of pedidos(); track p.id) {
+            <tr>
+              <td>{{ p.id }}</td>
+              <td><strong>{{ p.proveedor }}</strong></td>
+              <td>{{ p.empleado }}</td>
+              <td>{{ p.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td><app-estado [id]="p.estadoId" [texto]="p.estado" /></td>
+              <td class="num">{{ p.totalEntradas }}</td>
+              <td>
+                <div class="acciones-celda">
+                  <button type="button" class="btn secundario chico" (click)="abrir(p.id)">Ver detalle</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (detalle(); as d) {
+  <app-modal [titulo]="'Pedido #' + d.id" [ancho]="true" (cerrar)="detalle.set(null)">
+    <dl class="datos">
+      <div><dt>Proveedor</dt><dd>{{ d.proveedor }}</dd></div>
+      <div><dt>Creado por</dt><dd>{{ d.empleado }}</dd></div>
+      <div><dt>Fecha</dt><dd>{{ d.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
+      <div>
+        <dt>Estado</dt>
+        <dd>
+          <select class="campo" [ngModel]="d.estadoId" (ngModelChange)="cambiarEstado(d.id, $event)">
+            @for (e of catalogos.estados(); track e.id) {
+              <option [ngValue]="e.id">{{ e.nombre }}</option>
+            }
+          </select>
+        </dd>
+      </div>
+    </dl>
+
+    <div class="acciones-rapidas">
+      <a class="btn" routerLink="/entradas" [queryParams]="{ nueva: 1, pedidoId: d.id }">Registrar entrada</a>
+      @if (d.totalEntradas === 0) {
+        <button type="button" class="btn secundario" (click)="abrirFormulario('editar')">Editar proveedor</button>
+      } @else {
+        <small class="tenue">No se puede editar: el pedido ya tiene entradas.</small>
+      }
+    </div>
+
+    <h3>Entradas asociadas</h3>
+    @if (d.entradas.length === 0) {
+      <p class="vacio">Este pedido aún no tiene entradas.</p>
+    } @else {
+      <ul class="lista">
+        @for (e of d.entradas; track e.id) {
+          <li>
+            <span>Entrada #{{ e.id }} · {{ e.tipoEntrada }} · {{ e.fecha | date: 'dd/MM/yyyy HH:mm' }}</span>
+            <span class="insignia">{{ e.estado }}</span>
+          </li>
+        }
+      </ul>
+    }
+
+    <h3 style="margin-top: 1rem">Historial de estados</h3>
+    <ul class="linea-tiempo">
+      @for (h of d.historial; track h.id) {
+        <li>{{ h.estado }} — {{ h.fechaCambio | date: 'dd/MM/yyyy HH:mm' }}</li>
+      }
+    </ul>
+  </app-modal>
+}
+
+@if (formulario(); as modo) {
+  <app-modal [titulo]="modo === 'nuevo' ? 'Nuevo pedido' : 'Editar pedido'" (cerrar)="formulario.set(null)">
+    <form class="formulario" (ngSubmit)="guardar()">
+      <label for="pedido-proveedor">Proveedor</label>
+      <input id="pedido-proveedor" class="campo" name="proveedor" [(ngModel)]="proveedor" maxlength="150" />
+      @if (modo === 'nuevo') {
+        <p class="ayuda">El pedido se crea con estado «En espera».</p>
+      }
+      <div class="acciones">
+        <button type="button" class="btn secundario" (click)="formulario.set(null)">Cancelar</button>
+        <button type="submit" class="btn" [disabled]="guardando()">{{ guardando() ? 'Guardando...' : 'Guardar' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}
