@@ -46,6 +46,13 @@ function baseDeDatos(): { config: ConfigBaseDeDatos; gestionada: boolean } {
     };
   }
 
+  // En producción nunca se debe caer en "localhost" por accidente: es casi siempre una variable mal puesta
+  if (process.env.NODE_ENV === "production" && !process.env.DB_HOST) {
+    throw new Error(
+      "Falta la base de datos: define DATABASE_URL (Railway: ${{Postgres.DATABASE_URL}}) en las variables del servicio de la aplicación, o DB_HOST/DB_USER/DB_PASSWORD/DB_NAME."
+    );
+  }
+
   return {
     gestionada: false,
     config: {
